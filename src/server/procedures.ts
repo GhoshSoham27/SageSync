@@ -34,6 +34,11 @@ const extendedDatabaseMiddleware = j.middleware(async ({ c, next }) => {
   return await next({ db })
 })
 
+ const authMiddleware = j.middleware(({next}) => {
+  const user = {name: "John"}
+  return next({user})
+ })
+
 /**
  * Public (unauthenticated) procedures
  *
@@ -41,3 +46,4 @@ const extendedDatabaseMiddleware = j.middleware(async ({ c, next }) => {
  */
 export const baseProcedure = j.procedure
 export const publicProcedure = baseProcedure.use(extendedDatabaseMiddleware)
+export const privateProcedure = publicProcedure.use(authMiddleware)

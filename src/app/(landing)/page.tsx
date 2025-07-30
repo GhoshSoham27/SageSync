@@ -156,7 +156,7 @@ const Page = () => {
             <div className="pointer-events-none absolute inset-px rounded-lg shadow ring-1 ring-black/5 max-lg:rounded-t-[2rem]"/>
           </div>
 
-          {/* 3rd Bento grid element */}
+          {/* Third Bento grid element */}
 
           <div className="relative max-lg:row-start-3 lg:col-start-2 lg:row-start-2">
             <div className="absolute inset-px rounded-lg bg-white" />
