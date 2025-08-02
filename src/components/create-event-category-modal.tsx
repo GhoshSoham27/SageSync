@@ -1,6 +1,6 @@
 "use client"
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PropsWithChildren, useState } from "react";
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -10,6 +10,8 @@ import { Modal } from "./ui/modal";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { cn } from "@/utils";
+import { Button } from "./ui/button";
+import { client } from "@/lib/client";
 
 const EVENT_CATEGORY_VALIDATIOR = z.object({
     name: CATEGORY_NAME_VALIDATOR,
@@ -45,11 +47,25 @@ const EMOJI_OPTIONS = [
     { emoji: "🔔", label: "Notification" },
 ]
 
-export const CreateEventCategoryModal = ({ children }: PropsWithChildren) =>{
+interface CreateEventCategoryModal extends PropsWithChildren {
+    containerClassName?: string
+}
+
+export const CreateEventCategoryModal = ({ children, containerClassName }: CreateEventCategoryModal) =>{
     const [isOpen, setIsOpen] = useState(false)
     const queryClient = useQueryClient()
 
-    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+    const {mutate: createEventCategory, isPending} = useMutation({
+        mutationFn: async (data: EventCategoryForm) => {
+            await client.category.createEventCategory.$post(data)
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({queryKey: ["user-event-categories"]})
+            setIsOpen(false)
+        }
+    })
+
+    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<EventCategoryForm>({
         resolver: zodResolver(EVENT_CATEGORY_VALIDATIOR),
     })
 
@@ -57,12 +73,12 @@ export const CreateEventCategoryModal = ({ children }: PropsWithChildren) =>{
     const selectedEmoji = watch("emoji")
 
     const onSubmit = (data: EventCategoryForm) => {
-        data
+        createEventCategory(data)
     }
 
     return (
         <>
-            <div onClick={() => setIsOpen(true)}>
+            <div className={containerClassName} onClick={() => setIsOpen(true)}>
                 {children}
             </div>
             <Modal className="max-w-xl p-8" showModal={isOpen} setShowModal={setIsOpen}>
@@ -103,8 +119,18 @@ export const CreateEventCategoryModal = ({ children }: PropsWithChildren) =>{
                                     </button>
                                 ))}
                             </div>
-                            {errors.color ? (<p className="mt-1 text-sm text-red-500">{errors.color.message}</p>) : null}
+                            {errors.emoji ? (<p className="mt-1 text-sm text-red-500">{errors.emoji.message}</p>) : null}
                         </div>
+                    </div>
+                    <div className="flex justify-end space-x-3 pt-4 border-t">
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setIsOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button disabled={isPending} type="submit">{isPending ? "Creating..." : "Create Category"}{" "}</Button>
                     </div>
                 </form>
             </Modal>
