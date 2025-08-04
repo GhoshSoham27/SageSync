@@ -2,6 +2,7 @@
 
 import { EventCategory } from "@prisma/client"
 import { useQuery } from "@tanstack/react-query"
+import { EmptyCategoryState } from "./empty-category-state"
 
 interface CategoryPageContentProps{
     hasEvents: boolean,
@@ -15,6 +16,6 @@ export const CategoryPageContent= ({hasEvents : initialhasEvents, category} : Ca
     })
 
     if(!pollingData.hasEvents){
-        return <EmptyCategoryState />
+        return <EmptyCategoryState categoryName={category.name}/>
     }
 }
