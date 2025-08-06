@@ -1,69 +1,118 @@
-import { FREE_QUOTA, PRO_QUOTA } from "@/config";
-import { db } from "@/db";
-import { CATEGORY_NAME_VALIDATOR } from "@/lib/validators/categories-validator";
-import { NextRequest, NextResponse } from "next/server";
-import z from "zod";
+import { FREE_QUOTA, PRO_QUOTA } from "@/config"
+import { db } from "@/db"
+import { DiscordClient } from "@/lib/discord-client"
+import { CATEGORY_NAME_VALIDATOR } from "@/lib/validators/categories-validator"
+import { NextRequest, NextResponse } from "next/server"
+import z, { unknown } from "zod"
 
-const REQUEST_VALIDATOR = z.object({
+const REQUEST_VALIDATOR = z
+  .object({
     category: CATEGORY_NAME_VALIDATOR,
     fields: z.record(z.string().or(z.number()).or(z.boolean())).optional(),
     description: z.string().optional(),
-})
-.strict()
+  })
+  .strict()
 
 export const POST = async (req: NextRequest) => {
-    const authHeader = req.headers.get("Authorization")
-    if(!authHeader){
-        return NextResponse.json({message: "Unauthorized"}, {status: 401})
-    }
+  const authHeader = req.headers.get("Authorization")
+  if (!authHeader) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
+  }
 
-    if(!authHeader.startsWith("Bearer ")){
-        return NextResponse.json({
-            message: "Invalid auth header format. Expected: 'Bearer [API_KEY]'",
-        }, {status: 401})
-    }
+  if (!authHeader.startsWith("Bearer ")) {
+    return NextResponse.json(
+      {
+        message: "Invalid auth header format. Expected: 'Bearer [API_KEY]'",
+      },
+      { status: 401 }
+    )
+  }
 
-    const apiKey = authHeader.split(" ")[1]
+  const apiKey = authHeader.split(" ")[1]
 
-    if(!apiKey || apiKey.trim() === ""){
-        return NextResponse.json({ message: "Invalid API key"}, { status: 401 })
-    }
+  if (!apiKey || apiKey.trim() === "") {
+    return NextResponse.json({ message: "Invalid API key" }, { status: 401 })
+  }
 
-    const user = await db.user.findUnique({
-        where: {apiKey},
-        include: {EventCategories: true}
-    })
+  const user = await db.user.findUnique({
+    where: { apiKey },
+    include: { EventCategories: true },
+  })
 
-    if(!user){
-        return NextResponse.json({ message: "Invalid API key"}, { status: 401 })
-    }
+  if (!user) {
+    return NextResponse.json({ message: "Invalid API key" }, { status: 401 })
+  }
 
-    if(!user.discordId){
-        return NextResponse.json({
-            messsage: "Please enter your discord ID in your account settings"
-        }, {status: 403})
-    }
+  if (!user.discordId) {
+    return NextResponse.json(
+      {
+        messsage: "Please enter your discord ID in your account settings",
+      },
+      { status: 403 }
+    )
+  }
 
-    // Actual Logic
-    const currentDate = new Date()
-    const currenMonth = currentDate.getMonth() + 1
-    const currentYear = currentDate.getFullYear()
+  // Actual Logic
+  const currentDate = new Date()
+  const currenMonth = currentDate.getMonth() + 1
+  const currentYear = currentDate.getFullYear()
 
-    const quota = await db.quota.findUnique({
-        where: {
-            userId: user.id,
-            month: currenMonth,
-            year: currentYear,
-        }
-    })
+  const quota = await db.quota.findUnique({
+    where: {
+      userId: user.id,
+      month: currenMonth,
+      year: currentYear,
+    },
+  })
 
-    const quotaLimit = user.plan === "FREE" ? FREE_QUOTA.maxEventsPerMonth : PRO_QUOTA.maxEventsPerMonth
+  const quotaLimit =
+    user.plan === "FREE"
+      ? FREE_QUOTA.maxEventsPerMonth
+      : PRO_QUOTA.maxEventsPerMonth
 
-    if(quota && quota.count >= quotaLimit) {
-        return NextResponse.json({
-            message: "Month quota reached. Please upgrade your plan for more events."
-        }, {status: 429})
-    }
+  if (quota && quota.count >= quotaLimit) {
+    return NextResponse.json(
+      {
+        message:
+          "Month quota reached. Please upgrade your plan for more events.",
+      },
+      { status: 429 }
+    )
+  }
 
-    const dicord = new DiscordClient()
+  const discord = new DiscordClient(process.env.DISCORD_BOT_TOKEN)
+
+  const dmChannel = await discord.createDM(user.discordId)
+
+  let requestData = unknown
+
+  try {
+    requestData = await req.json()
+  } catch (err) {
+    return NextResponse.json(
+      {
+        message: "Invalid JSON request body",
+      },
+      { status: 400 }
+    )
+  }
+
+  const validatioResult = REQUEST_VALIDATOR.parse(requestData)
+
+  const category = user.EventCategories.find(
+    (cat) => cat.name === validatioResult.category
+  )
+
+  if(!category){
+    return NextResponse.json(
+        {
+            message: `You don't have a catehory named "${validatioResult.category}"`,
+        },
+        {status: 404}
+    )
+  }
+
+  const eventData = {
+    title: `${category.emoji || "🔔"} ${category.name.charAt(0).toUpperCase() + category.name.slice(1)}`
+  }
 }
