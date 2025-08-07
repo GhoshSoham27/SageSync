@@ -97,22 +97,37 @@ export const POST = async (req: NextRequest) => {
     )
   }
 
-  const validatioResult = REQUEST_VALIDATOR.parse(requestData)
+  const validationResult = REQUEST_VALIDATOR.parse(requestData)
 
   const category = user.EventCategories.find(
-    (cat) => cat.name === validatioResult.category
+    (cat) => cat.name === validationResult.category
   )
 
-  if(!category){
+  if (!category) {
     return NextResponse.json(
-        {
-            message: `You don't have a catehory named "${validatioResult.category}"`,
-        },
-        {status: 404}
+      {
+        message: `You don't have a catehory named "${validationResult.category}"`,
+      },
+      { status: 404 }
     )
   }
 
   const eventData = {
-    title: `${category.emoji || "🔔"} ${category.name.charAt(0).toUpperCase() + category.name.slice(1)}`
+    title: `${category.emoji || "🔔"} ${
+      category.name.charAt(0).toUpperCase() + category.name.slice(1)
+    }`,
+    deciption:
+      validationResult.description || `A new ${category.name} event has occured`,
+    color: category.color,
+    timestamp: new Date().toISOString(),
+    fields: Object.entries(validationResult.fields || {}).map(
+      ([key, value]) => {
+        return {
+          name: key,
+          value: String(value),
+          inline: true
+        }
+      }
+    ),
   }
 }
