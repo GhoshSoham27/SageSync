@@ -54,13 +54,13 @@ export const POST = async (req: NextRequest) => {
 
   // Actual Logic
   const currentDate = new Date()
-  const currenMonth = currentDate.getMonth() + 1
+  const currentMonth = currentDate.getMonth() + 1
   const currentYear = currentDate.getFullYear()
 
   const quota = await db.quota.findUnique({
     where: {
       userId: user.id,
-      month: currenMonth,
+      month: currentMonth,
       year: currentYear,
     },
   })
@@ -125,9 +125,54 @@ export const POST = async (req: NextRequest) => {
         return {
           name: key,
           value: String(value),
-          inline: true
+          inline: true,
         }
       }
     ),
   }
+
+  const event = await db.event.create({
+    data: {
+      name: category.name,
+      formattedMessage: `${eventData.title}\n\n${eventData.deciption}`,
+      userId: user.id,
+      fields: validationResult.fields || {},
+      eventCategoryId: category.id,
+    }
+  })
+
+  try {
+    await discord.sendEmbed(dmChannel.id, eventData)
+    await db.event.update({
+      where: { id: event.id},
+      data: { deliveyStatus: "DELIVERED"}
+    })
+    await db.quota.upsert({
+      where: {userId: user.id, month: currentMonth, year: currentYear},
+      update: {count: {increment: 1}},
+      create: {
+        userId: user.id,
+        month: currentMonth,
+        year: currentYear,
+        count: 1,
+      }
+    })
+  } catch (err) {
+    await db.event.update({
+      where: { id: event.id},
+      data: { deliveyStatus: "FAILED"}
+    })
+
+    console.log(err)
+
+    return NextResponse.json({
+      message: "Error processing event",
+      eventId: event.id
+    }, {status: 500})
+  }
+
+  return NextResponse.json({
+    message: "Event processed successfully",
+    eventId: event.id,
+  })
 }
