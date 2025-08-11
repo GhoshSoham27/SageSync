@@ -52,7 +52,7 @@ model EventCategory {
   @@unique([name, userId])
 }
 
-enum deliveyStatus {
+enum deliveryStatus {
   PENDING
   DELIVERED
   FAILED
@@ -68,7 +68,7 @@ model Event {
   name   String
   fields Json
 
-  deliveyStatus deliveyStatus @default(PENDING)
+  deliveryStatus deliveryStatus @default(PENDING)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
