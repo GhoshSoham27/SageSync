@@ -13,6 +13,7 @@ import { isAfter, isToday, startOfMonth, startOfWeek } from "date-fns"
 import {
   ColumnDef,
   ColumnFiltersState,
+  flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
@@ -24,7 +25,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/utils"
 import { Heading } from "@/components/heading"
-import { Table, TableHeader } from "@/components/ui/table"
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 interface CategoryPageContentProps {
   hasEvents: boolean
@@ -289,8 +290,17 @@ export const CategoryPageContent = ({
         <Card contentClassName="px-6 py-4">
           <Table>
             <TableHeader>
-              {table.getHeaderGroups().map}
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
+            <TableBody></TableBody>
           </Table>
         </Card>
       </div>
